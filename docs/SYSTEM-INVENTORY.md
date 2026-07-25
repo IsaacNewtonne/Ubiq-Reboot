@@ -81,9 +81,29 @@ Safe read-only checks were performed on 2026-07-26 using `eth_chainId`,
 | `https://rpc.ubiqsmart.com` | Healthy; chain `0x8`; head `8,381,098` |
 
 The working endpoint identified itself as
-`Gubiq/v7.0.2-develop-2384cb50/linux-amd64/go1.22.1`. This is newer than the
-public canonical repository head and therefore creates a release-provenance
-question that must be resolved before binaries are trusted or promoted.
+`Gubiq/v7.0.2-develop-2384cb50/linux-amd64/go1.22.1`.
+
+The reported commit was subsequently located in public history. Commit
+`2384cb5034cf23261d681bf3366bbfe07bbf376d` is the parent of the v7.0.2 version
+bump and an ancestor of the v7.0.2 release and current `master`. The endpoint is
+therefore running a traceable but pre-release build, not an unknown newer build.
+It should still be upgraded to a documented release.
+
+### Release provenance
+
+- Latest public release: `v7.0.2 - Sunflower`
+- Published: 2024-03-26
+- Release tag object: `28f28bda187a9bcca063192f2831020316c08015`
+- Tagged source commit: `29a4ef4949df41907312c5caabf9a3dc8647d54b`
+- Builder uses Go `1.22.x` and GitHub Actions.
+- Release assets exist for Linux AMD64/ARM64/ARM7, macOS AMD64, and Windows
+  AMD64.
+- The tag object contains no cryptographic signature.
+- The release assets contain raw binaries but no published checksum manifest,
+  signature, SBOM, or provenance attestation.
+- The separate builder workflow triggers on every push while building a
+  hard-coded tag. It uploads workflow artifacts; the audited workflow does not
+  itself publish or sign GitHub Release assets.
 
 ### Bootnode sampling
 
@@ -107,8 +127,9 @@ test remains required.
 4. Governance proposals have no visible repository activity since 2020.
 5. A working chain does not guarantee a reproducible client release, healthy
    peer topology, safe wallet, or recoverable public infrastructure.
-6. The only responding audited RPC reports a client build newer than the
-   canonical public source, with no source provenance yet established.
+6. The only responding audited RPC runs a traceable pre-release commit rather
+   than the latest tagged release.
+7. Release binaries lack a published checksum/signature/SBOM/attestation chain.
 
 ## Local audit sources
 

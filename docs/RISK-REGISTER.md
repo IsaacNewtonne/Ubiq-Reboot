@@ -10,7 +10,7 @@ relevant owner has had an opportunity to provide missing evidence.
 | --- | --- | --- | --- | --- |
 | R-001 | Official website recommends an RPC hostname that does not resolve | High | High | Replace or restore endpoint and publish status |
 | R-002 | Pyrus embeds a primary Ubiq RPC hostname that does not resolve | High | High | Patch defaults and add healthy fallback RPCs |
-| R-003 | Public RPC binary is newer than canonical public source | Critical | Medium | Locate commit, build recipe, artifacts, and operator |
+| R-003 | Public RPC runs a traceable pre-release commit instead of v7.0.2 | Medium | High | Upgrade and document the deployed release |
 | R-004 | Canonical node source has no public commits since March 2024 | High | High | Establish maintainers and upstream upgrade plan |
 | R-005 | At least four of nine hard-coded v4 bootnodes were unreachable | High | Medium | Run protocol-level checks and refresh bootnodes |
 | R-006 | Docs have no public commits since December 2022 | High | High | Audit every onboarding link and rebuild docs |
@@ -18,19 +18,20 @@ relevant owner has had an opportunity to provide missing evidence.
 | R-008 | Website, wallet, and third parties advertise conflicting RPCs | High | High | Create canonical machine-readable network metadata |
 | R-009 | Go module declares language version 1.15 | High | High | Inventory dependencies and test supported Go versions |
 | R-010 | Testnet configuration references retired Ethereum testnets | Medium | High | Define and document a Ubiq-owned test environment |
+| R-011 | Release binaries lack checksums, signatures, SBOMs, and attestations | Critical | High | Replace release pipeline with signed provenance |
+| R-012 | Builder workflow does not publish releases and builds a hard-coded tag on every push | High | High | Create tag-gated least-privilege release workflow |
 
 ## Priority interpretation
 
-The first release must not begin with marketing. R-001 through R-005 affect the
-ability to join, verify, and safely operate the network. They are the initial
-release blockers.
+The first release must not begin with marketing. R-001, R-002, R-004, R-005,
+R-011, and R-012 affect the ability to join, verify, and safely operate the
+network. They are the initial release blockers.
 
 ## Evidence needed next
 
-- source and build provenance for `Gubiq/v7.0.2-develop-2384cb50`;
 - operator ownership for `rpc.ubiqsmart.com`;
+- deployment and upgrade process for `rpc.ubiqsmart.com`;
 - protocol-level peer results for all canonical bootnodes;
 - latest signed release and checksum verification;
 - clean builds and tests on current supported toolchains;
 - dependency and known-vulnerability reports for Gubiq and Pyrus.
-
