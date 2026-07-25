@@ -1,0 +1,57 @@
+{
+  "$schema": "./networks.schema.json",
+  "generatedAt": "2026-07-26",
+  "networks": [
+    {
+      "name": "Ubiq Mainnet",
+      "shortName": "ubq",
+      "chainId": 8,
+      "networkId": 8,
+      "nativeCurrency": {
+        "name": "Ubiq",
+        "symbol": "UBQ",
+        "decimals": 18
+      },
+      "genesisHash": "0x406f1b7dd39fca54d8c702141851ed8b755463ab5b560e6f19b963b4047418af",
+      "rpc": [
+        {
+          "url": "https://rpc.ubiqsmart.com",
+          "status": "observed-working",
+          "source": "pyrus"
+        },
+        {
+          "url": "https://rpc.octano.dev",
+          "status": "observed-dns-failure",
+          "source": "website"
+        },
+        {
+          "url": "https://pyrus1.ubiqscan.io",
+          "status": "observed-dns-failure",
+          "source": "pyrus"
+        },
+        {
+          "url": "https://pyrus2.ubiqscan.io",
+          "status": "observed-dns-failure",
+          "source": "third-party-metadata"
+        }
+      ],
+      "explorers": [
+        {
+          "name": "Ubiq Blockbook Explorer",
+          "url": "https://ubqblockexplorer.com",
+          "status": "observed-working"
+        },
+        {
+          "name": "Ubiq Explorer",
+          "url": "https://ubiqexplorer.com",
+          "status": "observed-working-unverified"
+        },
+        {
+          "name": "Ubiqscan",
+          "url": "https://ubiqscan.io",
+          "status": "unverified"
+        }
+      ]
+    }
+  ]
+}

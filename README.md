@@ -50,6 +50,9 @@ reliable path into the ecosystem:
 - `docs/AUDIT.md` — evidence-driven audit checklist
 - `docs/ROADMAP.md` — proposed 90-day execution plan
 - `docs/DECISIONS.md` — lightweight architectural decision log
+- `config/networks.json` — auditable machine-readable network metadata
+- `tools/Test-UbiqRpc.ps1` — safe read-only RPC health checker
+- `proposals/SECURE-RELEASES.md` — verifiable Gubiq release design
 
 ## Immediate next step
 
@@ -57,3 +60,14 @@ Identify the canonical Ubiq repositories, infrastructure owners, community
 channels, and available access. Then complete Phase 0 of the audit before
 announcing new products or dates.
 
+Run the current RPC health check from PowerShell:
+
+```powershell
+.\tools\Test-UbiqRpc.ps1
+```
+
+To include endpoints already known to have failed DNS checks:
+
+```powershell
+.\tools\Test-UbiqRpc.ps1 -IncludeKnownFailures
+```
