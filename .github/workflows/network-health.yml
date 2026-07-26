@@ -1,0 +1,41 @@
+name: Ubiq Network Health
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ubiq-network-health
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check public RPC endpoints
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build health checker
+        run: cargo build --release --locked
+      - name: Check Ubiq network
+        id: health
+        continue-on-error: true
+        run: target/release/ubiq-health --format json > ubiq-health.json
+      - name: Save health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubiq-health-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ubiq-health.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Fail when the network is unhealthy
+        if: steps.health.outcome != 'success'
+        run: |
+          echo "One or more selected Ubiq RPC endpoints failed the health check."
+          exit 1
