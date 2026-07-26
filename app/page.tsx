@@ -23,6 +23,78 @@ type Report = {
   };
 };
 
+const RPC_URL = "https://rpc.ubiqsmart.com";
+const METHODS = ["eth_chainId", "eth_blockNumber", "web3_clientVersion"] as const;
+type Method = (typeof METHODS)[number];
+
+function isHexQuantity(value: string) {
+  return /^0x(?:0|[1-9a-f][0-9a-f]*)$/i.test(value);
+}
+
+async function rpcCall(method: Method, id: number): Promise<Check> {
+  const started = performance.now();
+  try {
+    const response = await fetch(RPC_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", method, params: [], id }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const body = (await response.json()) as {
+      result?: unknown;
+      error?: unknown;
+    };
+    if (body.error !== undefined) throw new Error("RPC error");
+    if (typeof body.result !== "string" || body.result.length === 0) {
+      throw new Error("Invalid result");
+    }
+    if (
+      (method === "eth_chainId" || method === "eth_blockNumber") &&
+      !isHexQuantity(body.result)
+    ) {
+      throw new Error("Invalid blockchain value");
+    }
+    return {
+      method,
+      value: body.result,
+      latencyMs: Math.round(performance.now() - started),
+    };
+  } catch (error) {
+    return {
+      method,
+      value: null,
+      latencyMs: Math.round(performance.now() - started),
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+async function checkUbiqNetwork(): Promise<Report> {
+  const checks = await Promise.all(
+    METHODS.map((method, index) => rpcCall(method, index + 1)),
+  );
+  const chain = checks.find((check) => check.method === "eth_chainId");
+  const block = checks.find((check) => check.method === "eth_blockNumber");
+  const client = checks.find((check) => check.method === "web3_clientVersion");
+  return {
+    checkedAt: new Date().toISOString(),
+    healthy:
+      checks.every((check) => !check.error) &&
+      chain?.value?.toLowerCase() === "0x8",
+    network: {
+      name: "Ubiq Mainnet",
+      chainId: 8,
+      endpoint: RPC_URL,
+      blockNumber: block?.value ? Number.parseInt(block.value, 16) : null,
+      client: client?.value ?? null,
+      latencyMs: Math.max(...checks.map((check) => check.latencyMs)),
+      checks,
+    },
+  };
+}
+
 function UbiqLogo() {
   return (
     <svg
@@ -78,8 +150,7 @@ export default function Home() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/health", { cache: "no-store" });
-      const data = (await response.json()) as Report;
+      const data = await checkUbiqNetwork();
       setReport(data);
       setRequestFailed(false);
     } catch {

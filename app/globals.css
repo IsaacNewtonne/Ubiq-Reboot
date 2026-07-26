@@ -18,6 +18,7 @@
 html {
   background: var(--night);
   color-scheme: dark;
+  overflow-x: hidden;
   scroll-behavior: smooth;
 }
 
@@ -30,6 +31,8 @@ body {
   background-size: 48px 48px;
   color: var(--ink);
   font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 button,
@@ -53,6 +56,7 @@ main {
   padding-left: 28px;
   padding-right: 28px;
   position: relative;
+  width: 100%;
   z-index: 1;
 }
 
@@ -592,8 +596,14 @@ h1 {
     padding-top: 72px;
   }
 
+  h1 {
+    font-size: clamp(40px, 11.2vw, 48px);
+    overflow-wrap: anywhere;
+  }
+
   .hero-copy {
     font-size: 16px;
+    overflow-wrap: anywhere;
   }
 
   .hero-meta {
@@ -612,6 +622,12 @@ h1 {
 
   .metric:nth-child(n + 2) {
     border-top: 0;
+  }
+
+  .metric strong.client {
+    font-size: 17px;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .panel-heading {
