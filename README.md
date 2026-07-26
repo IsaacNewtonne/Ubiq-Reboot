@@ -87,6 +87,13 @@ and status-page generators. The process exits successfully only when every
 selected endpoint returns valid JSON-RPC responses and the expected chain ID.
 Known DNS failures are skipped unless `--include-known-failures` is supplied.
 
+## Automatic network monitoring
+
+GitHub Actions runs the health checker every hour and can also be started
+manually from the Actions tab. Each run saves its JSON report for 30 days. A
+failed endpoint makes the workflow fail, allowing repository notification rules
+to alert maintainers.
+
 Every push and pull request is tested on Windows, macOS, and Linux. Version
 tags such as `v0.1.0` produce downloadable binaries for Windows, Linux, and
 Intel/Apple Silicon macOS.
