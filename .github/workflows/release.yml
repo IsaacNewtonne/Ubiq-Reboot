@@ -1,0 +1,30 @@
+name: Release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, archive: ubiq-health-linux-x86_64.tar.gz }
+          - { os: macos-latest, target: x86_64-apple-darwin, archive: ubiq-health-macos-x86_64.tar.gz }
+          - { os: macos-latest, target: aarch64-apple-darwin, archive: ubiq-health-macos-aarch64.tar.gz }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, archive: ubiq-health-windows-x86_64.zip }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      - if: runner.os != 'Windows'
+        run: tar -C target/${{ matrix.target }}/release -czf ${{ matrix.archive }} ubiq-health
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive target/${{ matrix.target }}/release/ubiq-health.exe ${{ matrix.archive }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.archive }}

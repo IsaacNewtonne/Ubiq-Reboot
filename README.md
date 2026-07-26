@@ -51,7 +51,8 @@ reliable path into the ecosystem:
 - `docs/ROADMAP.md` — proposed 90-day execution plan
 - `docs/DECISIONS.md` — lightweight architectural decision log
 - `config/networks.json` — auditable machine-readable network metadata
-- `tools/Test-UbiqRpc.ps1` — safe read-only RPC health checker
+- `src/main.rs` — cross-platform Rust RPC health checker
+- `tools/Test-UbiqRpc.ps1` — legacy PowerShell RPC health checker
 - `proposals/SECURE-RELEASES.md` — verifiable Gubiq release design
 
 ## Immediate next step
@@ -60,14 +61,26 @@ Identify the canonical Ubiq repositories, infrastructure owners, community
 channels, and available access. Then complete Phase 0 of the audit before
 announcing new products or dates.
 
-Run the current RPC health check from PowerShell:
+## Cross-platform health checker
 
-```powershell
-.\tools\Test-UbiqRpc.ps1
+The primary health checker is written in Rust and embeds the default Ubiq
+network configuration, so downloaded release binaries need no extra files.
+
+Build and run it on Windows, macOS, or Linux:
+
+```console
+cargo run --release
 ```
 
-To include endpoints already known to have failed DNS checks:
+Useful options:
 
-```powershell
-.\tools\Test-UbiqRpc.ps1 -IncludeKnownFailures
+```console
+ubiq-health --help
+ubiq-health --timeout 5
+ubiq-health --config config/networks.json
+ubiq-health --include-known-failures
 ```
+
+Every push and pull request is tested on Windows, macOS, and Linux. Version
+tags such as `v0.1.0` produce downloadable binaries for Windows, Linux, and
+Intel/Apple Silicon macOS.
