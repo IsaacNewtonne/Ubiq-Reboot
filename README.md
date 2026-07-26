@@ -78,8 +78,14 @@ Useful options:
 ubiq-health --help
 ubiq-health --timeout 5
 ubiq-health --config config/networks.json
+ubiq-health --format json
 ubiq-health --include-known-failures
 ```
+
+`--format json` emits a versioned report suitable for CI, monitoring systems,
+and status-page generators. The process exits successfully only when every
+selected endpoint returns valid JSON-RPC responses and the expected chain ID.
+Known DNS failures are skipped unless `--include-known-failures` is supplied.
 
 Every push and pull request is tested on Windows, macOS, and Linux. Version
 tags such as `v0.1.0` produce downloadable binaries for Windows, Linux, and
