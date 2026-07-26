@@ -1,0 +1,29 @@
+name: Package Status Site
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm audit --omit=dev
+      - run: npm run lint
+      - run: npm run build:site
+      - name: Create deployment archive
+        run: tar -czf ubiq-status-site.tar.gz .open-next .openai
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ubiq-status-site
+          path: ubiq-status-site.tar.gz
+          if-no-files-found: error
+          retention-days: 7
