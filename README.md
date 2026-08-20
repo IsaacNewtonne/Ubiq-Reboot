@@ -97,3 +97,47 @@ to alert maintainers.
 Every push and pull request is tested on Windows, macOS, and Linux. Version
 tags such as `v0.1.0` produce downloadable binaries for Windows, Linux, and
 Intel/Apple Silicon macOS.
+
+## Status site on Cloudflare Workers
+
+The status site is built with Next.js and deployed to Cloudflare Workers via the
+[OpenNext Cloudflare adapter](https://opennext.js.org/cloudflare). This lets the
+site expose a real server-side route handler, `app/api/health/route.ts`, which
+aggregates gateway health without the browser ever touching a raw RPC endpoint.
+
+```console
+npm run build      # next build
+npm run deploy     # opennextjs-cloudflare build && opennextjs-cloudflare deploy
+```
+
+`wrangler.jsonc` and `open-next.config.ts` drive the adapter. The `/api/health`
+handler checks the canonical node and, when `WORKER_RPC_URL` is set (your
+deployed RPC worker below), the second gateway — so the status page reports two
+verified endpoints.
+
+## Public RPC worker
+
+`worker/` is a Cloudflare Worker that acts as a **second public Ubiq RPC
+gateway** — it proxies JSON-RPC to the canonical node (`rpc.ubiqsmart.com`,
+hardcoded as `UPSTREAM` in `worker/index.js`), giving the ecosystem an
+independently-operated endpoint. `GET /health` on the worker additionally runs
+the same three read-only checks and returns a JSON report.
+
+This is a *proxy*, not a second independent node. True node redundancy
+(R-001 / R-002 in `docs/RISK-REGISTER.md`) still requires a second operator
+running Gubiq. The worker closes the observable-gateway gap and, once deployed,
+completes the two-endpoint picture for the status site.
+
+Deploy the worker, then tell the status site about it:
+
+```console
+npx wrangler deploy -c worker/wrangler.toml
+# then set WORKER_RPC_URL (e.g. in wrangler.jsonc "vars") to the worker URL
+# and redeploy the site: npm run deploy
+```
+
+Run the worker locally:
+
+```console
+npm run worker:dev
+```

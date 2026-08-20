@@ -35,3 +35,13 @@ network. They are the initial release blockers.
 - latest signed release and checksum verification;
 - clean builds and tests on current supported toolchains;
 - dependency and known-vulnerability reports for Gubiq and Pyrus.
+
+## Planned mitigations
+
+- **R-001 / R-002 (single-operator RPC risk):** mitigated by standing up a
+  genuinely independent Gubiq node on a Raspberry Pi 4 (64-bit OS, external SSD,
+  `v7.0.2` release, RPC over a `cloudflared` tunnel). This adds a second
+  *operator*, not just a second proxy — the distinction the roadmap requires.
+  See "Next phase" in `ROADMAP.md`.
+- **R-003 (pre-release client in production):** the Pi node will run the tagged
+  `v7.0.2` release, establishing at least one endpoint on a documented build.

@@ -1,8 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",
-  distDir: "dist",
   images: {
     unoptimized: true,
   },
@@ -10,3 +8,10 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Enables Cloudflare bindings during `next dev`. Guarded so it does not run
+// during production builds (incl. `opennextjs-cloudflare build`), which keeps
+// the build Windows-compatible.
+if (process.env.NODE_ENV !== "production") {
+  import("@opennextjs/cloudflare").then((m) => m.initOpenNextCloudflareForDev());
+}

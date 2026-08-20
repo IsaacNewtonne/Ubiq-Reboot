@@ -1,54 +1,75 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import networks from "../config/networks.json";
 
-type Check = {
-  method: string;
+const METHODS = ["eth_chainId", "eth_blockNumber", "web3_clientVersion"] as const;
+type Method = (typeof METHODS)[number];
+
+const EXPECTED_CHAIN_ID = 8;
+const TARGET_GATEWAYS = 2;
+const REQUEST_TIMEOUT_MS = 8_000;
+
+// The status site is served from Cloudflare Workers, so this same-origin
+// route handler runs server-side: the browser never talks to the raw RPC
+// directly. If the handler is unreachable, we fall back to direct checks.
+const HEALTH_ENDPOINT = "/api/health";
+
+type EndpointCheck = {
+  method: Method;
   value: string | null;
   latencyMs: number;
   error?: string;
 };
 
+type Endpoint = {
+  url: string;
+  status: string;
+  up: boolean;
+  chainIdMatch: boolean;
+  chainId: number | null;
+  blockNumber: number | null;
+  client: string | null;
+  latencyMs: number;
+  checks: EndpointCheck[];
+};
+
 type Report = {
   checkedAt: string;
   healthy: boolean;
-  network: {
-    name: string;
-    chainId: number;
-    endpoint: string;
-    blockNumber: number | null;
-    client: string | null;
-    latencyMs: number;
-    checks: Check[];
-  };
+  targetGateways: number;
+  healthyGateways: number;
+  chainId: number;
+  blockNumber: number | null;
+  client: string | null;
+  endpoints: Endpoint[];
 };
 
-const RPC_URL = "https://rpc.ubiqsmart.com";
-const METHODS = ["eth_chainId", "eth_blockNumber", "web3_clientVersion"] as const;
-type Method = (typeof METHODS)[number];
+const METHODS_META: Array<[Method, string, string]> = [
+  ["eth_chainId", "Correct network", "Confirms this is Ubiq, not another chain."],
+  ["eth_blockNumber", "Fresh block height", "Confirms the node can read the live ledger."],
+  ["web3_clientVersion", "Working node software", "Confirms the gateway is answering normally."],
+];
 
-function isHexQuantity(value: string) {
+function isHexQuantity(value: string): boolean {
   return /^0x(?:0|[1-9a-f][0-9a-f]*)$/i.test(value);
 }
 
-async function rpcCall(method: Method, id: number): Promise<Check> {
+async function rpcCall(url: string, method: Method, id: number): Promise<EndpointCheck> {
   const started = performance.now();
   try {
-    const response = await fetch(RPC_URL, {
+    const response = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ jsonrpc: "2.0", method, params: [], id }),
       cache: "no-store",
-      signal: AbortSignal.timeout(8_000),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const body = (await response.json()) as {
-      result?: unknown;
-      error?: unknown;
-    };
-    if (body.error !== undefined) throw new Error("RPC error");
+    const body = (await response.json()) as { result?: unknown; error?: unknown };
+    if (body.error !== undefined) throw new Error("JSON-RPC error");
     if (typeof body.result !== "string" || body.result.length === 0) {
-      throw new Error("Invalid result");
+      throw new Error("Invalid response");
     }
     if (
       (method === "eth_chainId" || method === "eth_blockNumber") &&
@@ -71,28 +92,73 @@ async function rpcCall(method: Method, id: number): Promise<Check> {
   }
 }
 
-async function checkUbiqNetwork(): Promise<Report> {
+function toNumber(value: string | null): number | null {
+  if (value === null) return null;
+  const decimal = value.startsWith("0x") ? Number.parseInt(value, 16) : Number(value);
+  return Number.isFinite(decimal) ? decimal : null;
+}
+
+async function checkGateway(url: string, status: string): Promise<Endpoint> {
   const checks = await Promise.all(
-    METHODS.map((method, index) => rpcCall(method, index + 1)),
+    METHODS.map((method, index) => rpcCall(url, method, index + 1)),
   );
-  const chain = checks.find((check) => check.method === "eth_chainId");
-  const block = checks.find((check) => check.method === "eth_blockNumber");
-  const client = checks.find((check) => check.method === "web3_clientVersion");
+  const chain = checks.find((c) => c.method === "eth_chainId");
+  const block = checks.find((c) => c.method === "eth_blockNumber");
+  const client = checks.find((c) => c.method === "web3_clientVersion");
+
+  const chainId = toNumber(chain?.value ?? null);
+  const up = checks.every((c) => !c.error) && chainId === EXPECTED_CHAIN_ID;
+
+  return {
+    url,
+    status,
+    up,
+    chainIdMatch: chainId === EXPECTED_CHAIN_ID,
+    chainId,
+    blockNumber: toNumber(block?.value ?? null),
+    client: client?.value ?? null,
+    latencyMs: Math.max(...checks.map((c) => c.latencyMs)),
+    checks,
+  };
+}
+
+// Fallback used when no HEALTH_ENDPOINT is configured (local dev / preview).
+async function checkUbiqNetworkClientSide(): Promise<Report> {
+  const network = networks.networks.find((n) => n.chainId === EXPECTED_CHAIN_ID);
+  const rpcList = network?.rpc ?? [];
+
+  const endpoints = await Promise.all(
+    rpcList.map((rpc) => checkGateway(rpc.url, rpc.status)),
+  );
+
+  const healthyEndpoints = endpoints.filter((e) => e.up);
+  const primary = healthyEndpoints[0] ?? endpoints[0] ?? null;
+
   return {
     checkedAt: new Date().toISOString(),
-    healthy:
-      checks.every((check) => !check.error) &&
-      chain?.value?.toLowerCase() === "0x8",
-    network: {
-      name: "Ubiq Mainnet",
-      chainId: 8,
-      endpoint: RPC_URL,
-      blockNumber: block?.value ? Number.parseInt(block.value, 16) : null,
-      client: client?.value ?? null,
-      latencyMs: Math.max(...checks.map((check) => check.latencyMs)),
-      checks,
-    },
+    healthy: healthyEndpoints.length > 0,
+    targetGateways: TARGET_GATEWAYS,
+    healthyGateways: healthyEndpoints.length,
+    chainId: EXPECTED_CHAIN_ID,
+    blockNumber: primary?.blockNumber ?? null,
+    client: primary?.client ?? null,
+    endpoints,
   };
+}
+
+async function fetchHealthReport(): Promise<Report> {
+  if (!HEALTH_ENDPOINT) return checkUbiqNetworkClientSide();
+  try {
+    const response = await fetch(HEALTH_ENDPOINT, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS + 2000),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return (await response.json()) as Report;
+  } catch {
+    // Server aggregator unreachable: degrade to direct checks.
+    return checkUbiqNetworkClientSide();
+  }
 }
 
 function UbiqLogo() {
@@ -141,6 +207,14 @@ function shortenClient(client: string | null) {
   return client.split("/").slice(0, 2).join(" ");
 }
 
+function hostOf(url: string) {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
 export default function Home() {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
@@ -150,7 +224,7 @@ export default function Home() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await checkUbiqNetwork();
+      const data = await fetchHealthReport();
       setReport(data);
       setRequestFailed(false);
     } catch {
@@ -170,9 +244,16 @@ export default function Home() {
     };
   }, [refresh]);
 
+  const primary =
+    report?.endpoints.find((endpoint) => endpoint.up) ??
+    report?.endpoints[0] ??
+    null;
   const healthy = Boolean(report?.healthy) && !requestFailed;
   const state = loading && !report ? "checking" : healthy ? "healthy" : "down";
-  const block = report?.network.blockNumber?.toLocaleString("en-US") ?? "—";
+  const block = primary?.blockNumber?.toLocaleString("en-US") ?? "—";
+  const healthyGateways = report?.healthyGateways ?? 0;
+  const targetGateways = report?.targetGateways ?? 2;
+  const gatewayPct = Math.min(100, (healthyGateways / targetGateways) * 100);
 
   return (
     <main>
@@ -210,10 +291,10 @@ export default function Home() {
         </h1>
         <p className="hero-copy">
           {healthy
-            ? "The public gateway is answering correctly, reporting the expected chain, and advancing normally."
+            ? "The public gateways are answering correctly, reporting the expected chain, and advancing normally."
             : state === "checking"
-              ? "Contacting the public Ubiq gateway and verifying its response."
-              : "The public gateway did not pass every check. The blockchain itself may still be running."}
+              ? "Contacting the public gateways and verifying their responses."
+              : "No public gateway passed every check. The blockchain itself may still be running."}
         </p>
         <div className="hero-meta">
           <span className={`live-pill ${state}`}>
@@ -240,7 +321,7 @@ export default function Home() {
         <article className="metric">
           <span className="metric-label">Response time</span>
           <strong>
-            {report ? report.network.latencyMs.toLocaleString() : "—"}
+            {primary ? primary.latencyMs.toLocaleString() : "—"}
             <small> ms</small>
           </strong>
           <span className="metric-note">Slowest of three checks</span>
@@ -248,7 +329,7 @@ export default function Home() {
         <article className="metric">
           <span className="metric-label">Chain identity</span>
           <strong>
-            {report?.network.chainId ?? "—"}
+            {report?.chainId ?? "—"}
             <small> / UBQ</small>
           </strong>
           <span className="metric-note">Expected network confirmed</span>
@@ -256,9 +337,9 @@ export default function Home() {
         <article className="metric">
           <span className="metric-label">Node software</span>
           <strong className="client">
-            {shortenClient(report?.network.client ?? null)}
+            {shortenClient(primary?.client ?? null)}
           </strong>
-          <span className="metric-note">Public gateway version</span>
+          <span className="metric-note">Primary gateway version</span>
         </article>
       </section>
 
@@ -269,15 +350,13 @@ export default function Home() {
               <p className="eyebrow">What we verify</p>
               <h2>Three simple checks.</h2>
             </div>
-            <span className="endpoint">rpc.ubiqsmart.com</span>
+            <span className="endpoint">
+              {primary ? hostOf(primary.url) : "no gateway"}
+            </span>
           </div>
           <div className="check-list">
-            {[
-              ["eth_chainId", "Correct network", "Confirms this is Ubiq, not another chain."],
-              ["eth_blockNumber", "Fresh block height", "Confirms the node can read the live ledger."],
-              ["web3_clientVersion", "Working node software", "Confirms the gateway is answering normally."],
-            ].map(([method, title, description]) => {
-              const check = report?.network.checks.find(
+            {METHODS_META.map(([method, title, description]) => {
+              const check = primary?.checks.find(
                 (item) => item.method === method,
               );
               const passed = Boolean(check && !check.error);
@@ -304,17 +383,32 @@ export default function Home() {
 
         <aside className="panel honesty-panel">
           <p className="eyebrow">The honest picture</p>
-          <h2>One gateway is not enough.</h2>
+          <h2>Redundancy is the goal.</h2>
           <p>
-            Ubiq currently has one verified public connection. This page makes
-            that connection visible—it does not pretend the network already has
-            redundancy.
+            Ubiq is observed through {report?.endpoints.length ?? "several"}{" "}
+            configured gateways. This page shows each one honestly—it does not
+            pretend the network already has full redundancy.
           </p>
           <div className="gateway-count">
             <span>Verified gateways</span>
-            <strong>1 <small>of 2 needed</small></strong>
-            <div className="bar"><i /></div>
+            <strong>
+              {healthyGateways} <small>of {targetGateways} needed</small>
+            </strong>
+            <div className="bar">
+              <i style={{ width: `${gatewayPct}%` }} />
+            </div>
           </div>
+          <ul className="gw-list">
+            {(report?.endpoints ?? []).map((endpoint) => (
+              <li key={endpoint.url} className={endpoint.up ? "up" : "down"}>
+                <i />
+                <span className="gw-host">{hostOf(endpoint.url)}</span>
+                <span className="gw-state">
+                  {endpoint.up ? "operational" : "unreachable"}
+                </span>
+              </li>
+            ))}
+          </ul>
           <a
             href="https://github.com/IsaacNewtonne/Ubiq-Reboot"
             target="_blank"

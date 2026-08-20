@@ -1,0 +1,13 @@
+name = "ubiq-rpc"
+main = "index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# This worker is both a second public Ubiq RPC gateway (JSON-RPC proxy) and a
+# server-side health aggregator (GET /health). Deploy it, then point the status
+# site at its /health endpoint via NEXT_PUBLIC_HEALTH_API.
+#
+#   npx wrangler deploy -c worker/wrangler.toml
+#
+# The canonical upstream is hardcoded in index.js (UPSTREAM). To front a
+# different node, change UPSTREAM there.

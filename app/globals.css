@@ -482,6 +482,53 @@ h1 {
   text-decoration: none;
 }
 
+.gw-list {
+  border-top: 1px solid var(--line);
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+}
+
+.gw-list li {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  font-size: 11px;
+  gap: 12px;
+  padding: 13px 0;
+}
+
+.gw-list li i {
+  border-radius: 50%;
+  flex: none;
+  height: 7px;
+  width: 7px;
+}
+
+.gw-list li.up i {
+  background: var(--green);
+  box-shadow: 0 0 10px rgba(0, 234, 144, 0.7);
+}
+
+.gw-list li.down i {
+  background: var(--danger);
+  box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+}
+
+.gw-host {
+  color: var(--ink);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gw-state {
+  color: var(--muted);
+  flex: none;
+  text-transform: uppercase;
+}
+
 .principle {
   border-bottom: 1px solid var(--line);
   border-top: 1px solid var(--line);

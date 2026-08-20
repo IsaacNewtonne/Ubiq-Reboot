@@ -70,3 +70,24 @@ operating cadence.
 - active independent contributors and node operators;
 - sustained organic transactions and contract usage.
 
+## Next phase: independent node on Raspberry Pi
+
+The deployed status site and RPC worker are a proxy in front of the single
+canonical node — useful for monitoring and a second observable endpoint, but
+**not** true redundancy. The next phase is to stand up a genuinely independent
+Gubiq operator:
+
+- Hardware: Raspberry Pi 4 (4 GB minimum, 8 GB preferred) running 64-bit
+  Raspberry Pi OS, with an external USB3 SSD (do not use the SD card for the
+  chain data).
+- Build: `gubiq` from `ubiq/go-ubiq` at the tagged **v7.0.2** release (the
+  pre-release commit the current endpoint runs should not become the norm — see
+  R-003), cross-compiled for `linux/arm64`.
+- Exposure: bind RPC to `127.0.0.1` only and publish it through a `cloudflared`
+  tunnel (no open ports, tolerates a dynamic home IP).
+- Integration: register the tunnel hostname as a gateway so the status page and
+  health worker report a second *independent* operator, closing R-001/R-002.
+
+This converts "two proxies, one node" into "two operators, two nodes" — the
+redundancy the roadmap actually calls for.
+
